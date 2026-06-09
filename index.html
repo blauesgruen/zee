@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zeiterfassung</title>
+  <meta name="theme-color" content="#16734b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zeiterfassung">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f4;
+      --surface: #ffffff;
+      --ink: #18201c;
+      --muted: #637064;
+      --line: #dce2da;
+      --line-strong: #aebaae;
+      --accent: #16734b;
+      --accent-strong: #0f5738;
+      --accent-soft: #e8f4ee;
+      --amber: #9b5f05;
+      --amber-soft: #fff3d8;
+      --danger: #b3362d;
+      --shadow: 0 14px 40px rgba(22, 42, 30, .10);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, .75), rgba(246, 247, 244, .95)),
+        radial-gradient(circle at top left, rgba(22, 115, 75, .13), transparent 34rem),
+        var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(1180px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 24px 0 36px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.65rem, 3vw, 2.65rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .72);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 99px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .86);
+      box-shadow: var(--shadow);
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: minmax(190px, 1fr) repeat(2, minmax(210px, 1fr)) minmax(210px, .8fr);
+      gap: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .field,
+    .unit-box {
+      min-width: 0;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 10px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .unit-grid {
+      display: grid;
+      grid-template-columns: 1fr 84px;
+      gap: 8px;
+    }
+
+    .unit-grid input[type="number"] {
+      text-align: right;
+    }
+
+    .period {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+
+    .toolbar-actions,
+    .range-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 11px;
+      font-weight: 750;
+    }
+
+    .btn.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .78);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 5px;
+      font-size: clamp(1.25rem, 2vw, 1.8rem);
+      line-height: 1.05;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: var(--surface);
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #eef3ef;
+      color: #26332b;
+      border-bottom: 2px solid var(--line-strong);
+      text-align: left;
+      font-size: .86rem;
+      padding: 10px;
+    }
+
+    th,
+    td {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 8px 10px;
+      vertical-align: middle;
+    }
+
+    th:last-child,
+    td:last-child {
+      border-right: 0;
+    }
+
+    tbody tr:hover td {
+      background: #fbfdfb;
+    }
+
+    .date-cell {
+      min-width: 145px;
+      font-weight: 760;
+    }
+
+    .day-muted {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 650;
+    }
+
+    .number-cell {
+      width: 150px;
+    }
+
+    .count-control {
+      display: grid;
+      grid-template-columns: 34px minmax(54px, 1fr) 34px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .count-control button {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 1.15rem;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .count-control input {
+      min-height: 34px;
+      padding: 5px;
+      text-align: center;
+    }
+
+    .total-cell {
+      min-width: 150px;
+      text-align: right;
+      font-weight: 800;
+    }
+
+    .note-cell {
+      min-width: 190px;
+    }
+
+    .note-cell input {
+      min-height: 34px;
+    }
+
+    .month-break td {
+      padding: 0;
+      border-bottom: 0;
+      background: var(--amber-soft);
+    }
+
+    .month-break div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+      padding: 8px 12px;
+      border-top: 2px solid var(--amber);
+      border-bottom: 2px solid var(--amber);
+      color: #4c340a;
+      font-weight: 850;
+    }
+
+    .month-break span {
+      color: #6b4a13;
+      font-size: .9rem;
+      font-weight: 750;
+    }
+
+    .empty {
+      padding: 26px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .mobile-list {
+      display: none;
+    }
+
+    @media (max-width: 920px) {
+      .settings {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .summary {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        width: min(100% - 20px, 620px);
+        padding-top: 16px;
+      }
+
+      .topbar,
+      .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .status {
+        justify-content: center;
+      }
+
+      .settings,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .table-wrap {
+        display: none;
+      }
+
+      .mobile-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .day-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        padding: 12px;
+      }
+
+      .day-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .day-card-title {
+        font-weight: 850;
+      }
+
+      .day-card-total {
+        color: var(--accent-strong);
+        font-weight: 850;
+        white-space: nowrap;
+      }
+
+      .day-card-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .mobile-field label {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .toolbar,
+      .count-control button,
+      .note-cell,
+      .mobile-list {
+        display: none !important;
+      }
+
+      .app {
+        width: 100%;
+        padding: 0;
+      }
+
+      .panel,
+      .metric {
+        box-shadow: none;
+      }
+
+      .table-wrap {
+        display: block;
+        overflow: visible;
+      }
+
+      table {
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <h1>Zeiterfassung</h1>
+      <div class="status" aria-live="polite"><span class="dot"></span><span id="saveStatus">Lokal gespeichert</span></div>
+    </header>
+
+    <section class="panel settings" aria-label="Stammdaten">
+      <div class="field">
+        <label for="personName">Name</label>
+        <input id="personName" autocomplete="name" placeholder="Name">
+      </div>
+
+      <div class="unit-box">
+        <label for="unitOneName">Einheit 1</label>
+        <div class="unit-grid">
+          <input id="unitOneName" placeholder="Einheit 1">
+          <input id="unitOneMinutes" type="number" min="0" step="1" inputmode="numeric" aria-label="Minuten Einheit 1">
+        </div>
+      </div>
+
+      <div class="unit-box">
+        <label for="unitTwoName">Einheit 2</label>
+        <div class="unit-grid">
+          <input id="unitTwoName" placeholder="Einheit 2">
+          <input id="unitTwoMinutes" type="number" min="0" step="1" inputmode="numeric" aria-label="Minuten Einheit 2">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Zeitraum</label>
+        <div class="period">
+          <input id="startDate" type="date" aria-label="Startdatum">
+          <input id="endDate" type="date" aria-label="Enddatum">
+        </div>
+      </div>
+    </section>
+
+    <section class="panel toolbar" aria-label="Aktionen">
+      <div class="range-actions">
+        <button class="btn" id="prevMonth" type="button" title="Vorheriger Monat">‹</button>
+        <button class="btn primary" id="currentMonth" type="button">Aktueller Monat</button>
+        <button class="btn" id="nextMonth" type="button" title="Nächster Monat">›</button>
+      </div>
+      <div class="toolbar-actions">
+        <button class="btn" id="exportData" type="button">Export</button>
+        <button class="btn" id="importData" type="button">Import</button>
+        <button class="btn" id="printPage" type="button">Drucken</button>
+        <input id="importFile" type="file" accept="application/json" hidden>
+      </div>
+    </section>
+
+    <section class="summary" aria-label="Summen">
+      <div class="metric"><span>Person</span><strong id="summaryName">-</strong></div>
+      <div class="metric"><span>Einheiten gesamt</span><strong id="summaryUnits">0</strong></div>
+      <div class="metric"><span>Minuten gesamt</span><strong id="summaryMinutes">0 min</strong></div>
+      <div class="metric"><span>Stunden gesamt</span><strong id="summaryHours">0,00 h</strong></div>
+    </section>
+
+    <section class="panel table-wrap" aria-label="Tagesliste">
+      <table>
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th id="unitOneHeader">Einheit 1</th>
+            <th id="unitTwoHeader">Einheit 2</th>
+            <th>Summe Tag</th>
+            <th>Notiz</th>
+          </tr>
+        </thead>
+        <tbody id="entryRows"></tbody>
+      </table>
+    </section>
+
+    <section class="mobile-list" id="mobileRows" aria-label="Tagesliste mobil"></section>
+  </main>
+
+  <template id="rowTemplate">
+    <tr>
+      <td class="date-cell"></td>
+      <td class="number-cell"></td>
+      <td class="number-cell"></td>
+      <td class="total-cell"></td>
+      <td class="note-cell"></td>
+    </tr>
+  </template>
+
+  <template id="cardTemplate">
+    <article class="day-card">
+      <div class="day-card-head">
+        <div>
+          <div class="day-card-title"></div>
+          <span class="day-muted"></span>
+        </div>
+        <div class="day-card-total"></div>
+      </div>
+      <div class="day-card-grid"></div>
+    </article>
+  </template>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var storageKey = "zeiterfassung-einzeldatei-v1";
+      var dayFormatter = new Intl.DateTimeFormat("de-DE", { weekday: "short" });
+      var dateFormatter = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+      var monthFormatter = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
+
+      var defaultRange = getCurrentMonthRange();
+      var state = loadState() || {
+        name: "Cordula",
+        unitOneName: "Einheit 1",
+        unitOneMinutes: 25,
+        unitTwoName: "Einheit 2",
+        unitTwoMinutes: 60,
+        startDate: defaultRange.start,
+        endDate: defaultRange.end,
+        entries: {}
+      };
+
+      var els = {
+        personName: document.getElementById("personName"),
+        unitOneName: document.getElementById("unitOneName"),
+        unitOneMinutes: document.getElementById("unitOneMinutes"),
+        unitTwoName: document.getElementById("unitTwoName"),
+        unitTwoMinutes: document.getElementById("unitTwoMinutes"),
+        startDate: document.getElementById("startDate"),
+        endDate: document.getElementById("endDate"),
+        saveStatus: document.getElementById("saveStatus"),
+        unitOneHeader: document.getElementById("unitOneHeader"),
+        unitTwoHeader: document.getElementById("unitTwoHeader"),
+        summaryName: document.getElementById("summaryName"),
+        summaryUnits: document.getElementById("summaryUnits"),
+        summaryMinutes: document.getElementById("summaryMinutes"),
+        summaryHours: document.getElementById("summaryHours"),
+        entryRows: document.getElementById("entryRows"),
+        mobileRows: document.getElementById("mobileRows"),
+        rowTemplate: document.getElementById("rowTemplate"),
+        cardTemplate: document.getElementById("cardTemplate"),
+        prevMonth: document.getElementById("prevMonth"),
+        currentMonth: document.getElementById("currentMonth"),
+        nextMonth: document.getElementById("nextMonth"),
+        exportData: document.getElementById("exportData"),
+        importData: document.getElementById("importData"),
+        importFile: document.getElementById("importFile"),
+        printPage: document.getElementById("printPage")
+      };
+
+      hydrateForm();
+      bindEvents();
+      render();
+
+      function hydrateForm() {
+        els.personName.value = state.name || "";
+        els.unitOneName.value = state.unitOneName || "Einheit 1";
+        els.unitOneMinutes.value = numberOrZero(state.unitOneMinutes);
+        els.unitTwoName.value = state.unitTwoName || "Einheit 2";
+        els.unitTwoMinutes.value = numberOrZero(state.unitTwoMinutes);
+        els.startDate.value = state.startDate || defaultRange.start;
+        els.endDate.value = state.endDate || defaultRange.end;
+      }
+
+      function bindEvents() {
+        ["personName", "unitOneName", "unitOneMinutes", "unitTwoName", "unitTwoMinutes", "startDate", "endDate"].forEach(function (key) {
+          els[key].addEventListener("input", function () {
+            syncFormState();
+            saveAndRender();
+          });
+        });
+
+        els.prevMonth.addEventListener("click", function () {
+          shiftMonth(-1);
+        });
+
+        els.currentMonth.addEventListener("click", function () {
+          setRange(getCurrentMonthRange());
+        });
+
+        els.nextMonth.addEventListener("click", function () {
+          shiftMonth(1);
+        });
+
+        els.exportData.addEventListener("click", exportData);
+        els.importData.addEventListener("click", function () { els.importFile.click(); });
+        els.importFile.addEventListener("change", importData);
+        els.printPage.addEventListener("click", function () { window.print(); });
+      }
+
+      function syncFormState() {
+        state.name = els.personName.value.trim();
+        state.unitOneName = els.unitOneName.value.trim() || "Einheit 1";
+        state.unitOneMinutes = numberOrZero(els.unitOneMinutes.value);
+        state.unitTwoName = els.unitTwoName.value.trim() || "Einheit 2";
+        state.unitTwoMinutes = numberOrZero(els.unitTwoMinutes.value);
+        state.startDate = els.startDate.value;
+        state.endDate = els.endDate.value;
+
+        if (state.startDate && state.endDate && state.startDate > state.endDate) {
+          state.endDate = state.startDate;
+          els.endDate.value = state.endDate;
+        }
+      }
+
+      function render() {
+        var days = getDaysBetween(state.startDate, state.endDate);
+        var totals = { unitOne: 0, unitTwo: 0, minutes: 0 };
+
+        els.unitOneHeader.textContent = state.unitOneName + " (" + state.unitOneMinutes + " min)";
+        els.unitTwoHeader.textContent = state.unitTwoName + " (" + state.unitTwoMinutes + " min)";
+        els.entryRows.textContent = "";
+        els.mobileRows.textContent = "";
+
+        if (!days.length) {
+          var emptyRow = document.createElement("tr");
+          var emptyCell = document.createElement("td");
+          emptyCell.colSpan = 5;
+          emptyCell.className = "empty";
+          emptyCell.textContent = "Kein Zeitraum gewählt";
+          emptyRow.appendChild(emptyCell);
+          els.entryRows.appendChild(emptyRow);
+          els.mobileRows.innerHTML = '<div class="empty panel">Kein Zeitraum gewählt</div>';
+          renderSummary(totals);
+          return;
+        }
+
+        days.forEach(function (iso, index) {
+          ensureEntry(iso);
+          var entry = state.entries[iso];
+          var dayMinutes = (entry.unitOne * state.unitOneMinutes) + (entry.unitTwo * state.unitTwoMinutes);
+          totals.unitOne += entry.unitOne;
+          totals.unitTwo += entry.unitTwo;
+          totals.minutes += dayMinutes;
+
+          renderTableRow(iso, entry, dayMinutes);
+          renderMobileCard(iso, entry, dayMinutes);
+
+          var next = days[index + 1];
+          if (!next || iso.slice(0, 7) !== next.slice(0, 7)) {
+            renderMonthBreak(iso, days);
+          }
+        });
+
+        renderSummary(totals);
+      }
+
+      function renderTableRow(iso, entry, dayMinutes) {
+        var row = els.rowTemplate.content.firstElementChild.cloneNode(true);
+        var date = parseIsoDate(iso);
+        var cells = row.children;
+
+        cells[0].innerHTML = escapeHtml(dateFormatter.format(date)) + '<span class="day-muted">' + escapeHtml(dayFormatter.format(date)) + '</span>';
+        cells[1].appendChild(createCounter(iso, "unitOne", entry.unitOne));
+        cells[2].appendChild(createCounter(iso, "unitTwo", entry.unitTwo));
+        cells[3].textContent = formatHours(dayMinutes) + " h";
+        cells[4].appendChild(createNoteInput(iso, entry.note));
+
+        els.entryRows.appendChild(row);
+      }
+
+      function renderMobileCard(iso, entry, dayMinutes) {
+        var card = els.cardTemplate.content.firstElementChild.cloneNode(true);
+        var date = parseIsoDate(iso);
+        var title = card.querySelector(".day-card-title");
+        var muted = card.querySelector(".day-muted");
+        var total = card.querySelector(".day-card-total");
+        var grid = card.querySelector(".day-card-grid");
+
+        title.textContent = dateFormatter.format(date);
+        muted.textContent = dayFormatter.format(date);
+        total.textContent = formatHours(dayMinutes) + " h";
+
+        grid.appendChild(createMobileField(state.unitOneName, state.unitOneMinutes, createCounter(iso, "unitOne", entry.unitOne)));
+        grid.appendChild(createMobileField(state.unitTwoName, state.unitTwoMinutes, createCounter(iso, "unitTwo", entry.unitTwo)));
+        grid.appendChild(createMobileNote(iso, entry.note));
+        els.mobileRows.appendChild(card);
+      }
+
+      function renderMonthBreak(iso, allDays) {
+        var monthDays = allDays.filter(function (day) { return day.slice(0, 7) === iso.slice(0, 7); });
+        var monthMinutes = monthDays.reduce(function (sum, day) {
+          var entry = state.entries[day] || { unitOne: 0, unitTwo: 0 };
+          return sum + (entry.unitOne * state.unitOneMinutes) + (entry.unitTwo * state.unitTwoMinutes);
+        }, 0);
+        var label = monthFormatter.format(parseIsoDate(iso));
+        var row = document.createElement("tr");
+        var cell = document.createElement("td");
+        var mobileBreak = document.createElement("div");
+
+        row.className = "month-break";
+        cell.colSpan = 5;
+        cell.innerHTML = '<div>Monatsende ' + escapeHtml(label) + '<span>' + formatHours(monthMinutes) + ' h</span></div>';
+        row.appendChild(cell);
+        els.entryRows.appendChild(row);
+
+        mobileBreak.className = "month-break";
+        mobileBreak.innerHTML = '<div>Monatsende ' + escapeHtml(label) + '<span>' + formatHours(monthMinutes) + ' h</span></div>';
+        els.mobileRows.appendChild(mobileBreak);
+      }
+
+      function renderSummary(totals) {
+        var unitTotal = totals.unitOne + totals.unitTwo;
+        els.summaryName.textContent = state.name || "-";
+        els.summaryUnits.textContent = String(unitTotal);
+        els.summaryMinutes.textContent = String(totals.minutes) + " min";
+        els.summaryHours.textContent = formatHours(totals.minutes) + " h";
+      }
+
+      function createCounter(iso, field, value) {
+        var wrapper = document.createElement("div");
+        var minus = document.createElement("button");
+        var input = document.createElement("input");
+        var plus = document.createElement("button");
+
+        wrapper.className = "count-control";
+        minus.type = "button";
+        minus.textContent = "−";
+        minus.title = "Verringern";
+        plus.type = "button";
+        plus.textContent = "+";
+        plus.title = "Erhöhen";
+        input.type = "number";
+        input.min = "0";
+        input.step = "1";
+        input.inputMode = "numeric";
+        input.value = value;
+
+        minus.addEventListener("click", function () {
+          updateEntry(iso, field, Math.max(0, numberOrZero(input.value) - 1));
+        });
+        plus.addEventListener("click", function () {
+          updateEntry(iso, field, numberOrZero(input.value) + 1);
+        });
+        input.addEventListener("input", function () {
+          updateEntry(iso, field, numberOrZero(input.value));
+        });
+
+        wrapper.appendChild(minus);
+        wrapper.appendChild(input);
+        wrapper.appendChild(plus);
+        return wrapper;
+      }
+
+      function createNoteInput(iso, value) {
+        var input = document.createElement("input");
+        input.value = value || "";
+        input.placeholder = "Notiz";
+        input.addEventListener("input", function () {
+          ensureEntry(iso);
+          state.entries[iso].note = input.value;
+          saveState();
+        });
+        return input;
+      }
+
+      function createMobileField(label, minutes, control) {
+        var field = document.createElement("div");
+        var labelEl = document.createElement("label");
+        field.className = "mobile-field";
+        labelEl.innerHTML = '<span>' + escapeHtml(label) + '</span><span>' + Number(minutes || 0) + ' min</span>';
+        field.appendChild(labelEl);
+        field.appendChild(control);
+        return field;
+      }
+
+      function createMobileNote(iso, value) {
+        var field = document.createElement("div");
+        var label = document.createElement("label");
+        field.className = "mobile-field";
+        label.textContent = "Notiz";
+        field.appendChild(label);
+        field.appendChild(createNoteInput(iso, value));
+        return field;
+      }
+
+      function updateEntry(iso, field, value) {
+        ensureEntry(iso);
+        state.entries[iso][field] = value;
+        saveAndRender();
+      }
+
+      function saveAndRender() {
+        saveState();
+        render();
+      }
+
+      function saveState() {
+        localStorage.setItem(storageKey, JSON.stringify(state));
+        els.saveStatus.textContent = "Lokal gespeichert";
+      }
+
+      function loadState() {
+        try {
+          var raw = localStorage.getItem(storageKey);
+          return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function ensureEntry(iso) {
+        if (!state.entries[iso]) {
+          state.entries[iso] = { unitOne: 0, unitTwo: 0, note: "" };
+        }
+        state.entries[iso].unitOne = numberOrZero(state.entries[iso].unitOne);
+        state.entries[iso].unitTwo = numberOrZero(state.entries[iso].unitTwo);
+        state.entries[iso].note = state.entries[iso].note || "";
+      }
+
+      function shiftMonth(direction) {
+        var base = state.startDate ? parseIsoDate(state.startDate) : new Date();
+        var shifted = new Date(base.getFullYear(), base.getMonth() + direction, 1);
+        setRange(getMonthRange(shifted));
+      }
+
+      function setRange(range) {
+        state.startDate = range.start;
+        state.endDate = range.end;
+        els.startDate.value = state.startDate;
+        els.endDate.value = state.endDate;
+        saveAndRender();
+      }
+
+      function exportData() {
+        var payload = JSON.stringify(state, null, 2);
+        var blob = new Blob([payload], { type: "application/json" });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = "zeiterfassung-" + (state.name || "daten").replace(/[^a-z0-9_-]+/gi, "-") + ".json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function importData(event) {
+        var file = event.target.files && event.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            var imported = JSON.parse(String(reader.result || "{}"));
+            state = Object.assign(state, imported);
+            state.entries = imported.entries || {};
+            hydrateForm();
+            saveAndRender();
+          } catch (error) {
+            alert("Die Datei konnte nicht importiert werden.");
+          } finally {
+            event.target.value = "";
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function getCurrentMonthRange() {
+        return getMonthRange(new Date());
+      }
+
+      function getMonthRange(date) {
+        var start = new Date(date.getFullYear(), date.getMonth(), 1);
+        var end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        return { start: toIsoDate(start), end: toIsoDate(end) };
+      }
+
+      function getDaysBetween(startIso, endIso) {
+        if (!startIso || !endIso || startIso > endIso) return [];
+        var days = [];
+        var current = parseIsoDate(startIso);
+        var end = parseIsoDate(endIso);
+        while (current <= end) {
+          days.push(toIsoDate(current));
+          current.setDate(current.getDate() + 1);
+        }
+        return days;
+      }
+
+      function parseIsoDate(iso) {
+        var parts = String(iso).split("-").map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+      }
+
+      function toIsoDate(date) {
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, "0");
+        var day = String(date.getDate()).padStart(2, "0");
+        return year + "-" + month + "-" + day;
+      }
+
+      function numberOrZero(value) {
+        var parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+      }
+
+      function formatHours(minutes) {
+        return (minutes / 60).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, function (char) {
+          return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char];
+        });
+      }
+    })();
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./service-worker.js").catch(function (error) {
+          console.warn("Service Worker konnte nicht registriert werden:", error);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
