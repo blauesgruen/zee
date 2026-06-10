@@ -525,7 +525,7 @@
       <div class="metric"><span>Person</span><strong id="summaryName">-</strong></div>
       <div class="metric"><span>Einheiten gesamt</span><strong id="summaryUnits">0</strong></div>
       <div class="metric"><span>Minuten gesamt</span><strong id="summaryMinutes">0 min</strong></div>
-      <div class="metric"><span>Stunden gesamt</span><strong id="summaryHours">0,00 h</strong></div>
+      <div class="metric"><span>Stunden gesamt</span><strong id="summaryHours">00:00 h</strong></div>
     </section>
 
     <section class="panel table-wrap" aria-label="Tagesliste">
@@ -965,7 +965,10 @@
       }
 
       function formatHours(minutes) {
-        return (minutes / 60).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        var totalMinutes = numberOrZero(minutes);
+        var hours = Math.floor(totalMinutes / 60);
+        var remainingMinutes = totalMinutes % 60;
+        return String(hours).padStart(2, "0") + ":" + String(remainingMinutes).padStart(2, "0");
       }
 
       function escapeHtml(value) {
