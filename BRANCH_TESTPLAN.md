@@ -82,3 +82,11 @@ Für lokalen Test muss `ZEE_ALLOWED_ORIGIN` entweder nicht gesetzt sein oder auf
 ## 6. Nicht testen mit Echtdaten
 
 Diese RC erst mit Testnamen testen. Wenn der Datenfluss stimmt, können Echtdaten verwendet werden.
+
+
+## RC3 Hinweise
+
+- Beim Rollenwechsel wird die Chef-Ansicht geschlossen.
+- Beim Wechsel des Namens oder Zugangs werden angezeigte Tagesdaten geleert.
+- Tagesdaten werden nicht mehr dauerhaft im Browser-localStorage gespeichert; Supabase ist die Quelle der gespeicherten Einträge.
+- Cache-Version: `zeiterfassung-pwa-v5`.

@@ -33,3 +33,11 @@ Die Tabellen sind nicht direkt aus dem Browser beschreibbar. Die Webseite ruft n
 - Unbekannte Namen werden nicht automatisch angelegt; der Browser fragt vorher nach Bestätigung.
 - Fehlermeldungen aus Supabase werden in der Statuszeile angezeigt.
 - Service-Worker-Cache: `zeiterfassung-pwa-v4`.
+
+
+## RC3 Hinweise
+
+- Beim Rollenwechsel wird die Chef-Ansicht geschlossen.
+- Beim Wechsel des Namens oder Zugangs werden angezeigte Tagesdaten geleert.
+- Tagesdaten werden nicht mehr dauerhaft im Browser-localStorage gespeichert; Supabase ist die Quelle der gespeicherten Einträge.
+- Cache-Version: `zeiterfassung-pwa-v5`.

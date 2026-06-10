@@ -757,6 +757,29 @@
         printPage: document.getElementById("printPage")
       };
 
+
+      function resetLoadedPerson(preserveName) {
+        if (sync.saveTimer) {
+          clearTimeout(sync.saveTimer);
+          sync.saveTimer = null;
+        }
+        sync.loaded = false;
+        sync.person = null;
+        state.entries = {};
+        if (!preserveName) {
+          state.name = "";
+        }
+        saveState();
+        render();
+        setLockedState();
+      }
+
+      function resetChefView() {
+        sync.chefRows = [];
+        els.chefPanel.classList.add("hidden");
+        els.chefContent.textContent = "Chef-Code eingeben, um die Übersicht zu laden.";
+      }
+
       hydrateForm();
       bindEvents();
       render();
@@ -800,7 +823,10 @@
           localStorage.setItem("zee-last-name", state.name);
           sync.loaded = false;
           sync.person = null;
-          setStatus("Name geändert. Bitte Daten laden.");
+          state.entries = {};
+          saveState();
+          render();
+          setStatus("Name geändert. Bisherige Anzeige wurde geleert. Bitte Daten laden.");
           setLockedState();
         });
 
@@ -823,9 +849,16 @@
         setAccessStatus("Zugang wird geprüft ...");
         try {
           var result = await callSync("unlock", {}, code);
+          var previousRole = sync.role;
           sync.accessCode = code;
           sync.role = result.role;
+          sync.loaded = false;
+          sync.person = null;
           sessionStorage.setItem(accessStorageKey, code);
+          state.entries = {};
+          saveState();
+          render();
+          resetChefView();
           setAccessStatus(result.role === "chef" ? "Chef-Zugang aktiv." : "Nutzer-Zugang aktiv. Namen eingeben und Daten laden.");
           if (result.role === "chef") {
             els.chefPanel.classList.remove("hidden");
@@ -834,12 +867,18 @@
           setLockedState();
           if (!silent && result.role === "user" && els.personName.value.trim()) {
             await loadPersonData();
+          } else if (previousRole && previousRole !== result.role) {
+            setStatus("Zugang gewechselt. Anzeige wurde geleert.");
           }
         } catch (error) {
           sync.role = null;
           sync.loaded = false;
           sync.person = null;
+          state.entries = {};
           sessionStorage.removeItem(accessStorageKey);
+          resetChefView();
+          saveState();
+          render();
           setAccessStatus("Zugang abgelehnt oder Verbindung fehlgeschlagen.");
           setLockedState();
         }
@@ -850,10 +889,13 @@
         sync.role = null;
         sync.loaded = false;
         sync.person = null;
+        state.entries = {};
         sessionStorage.removeItem(accessStorageKey);
         els.accessCode.value = "";
-        els.chefPanel.classList.add("hidden");
-        setAccessStatus("Gesperrt. Bitte Zugangscode eingeben.");
+        resetChefView();
+        saveState();
+        render();
+        setAccessStatus("Gesperrt. Anzeige wurde geleert. Bitte Zugangscode eingeben.");
         setLockedState();
       }
 
@@ -894,6 +936,7 @@
           sync.loaded = true;
           state.name = result.person.display_name;
           localStorage.setItem("zee-last-name", state.name);
+          state.entries = {};
           mergeRemoteEntries(result.entries || []);
           hydrateForm();
           saveState();
@@ -1181,14 +1224,18 @@
       }
 
       function saveState() {
-        localStorage.setItem(storageKey, JSON.stringify(state));
+        var storedState = Object.assign({}, state, { entries: {} });
+        localStorage.setItem(storageKey, JSON.stringify(storedState));
         setStatus(sync.loaded ? "Lokal gespeichert. Sync ausstehend." : "Lokal gespeichert. Nicht mit Supabase verbunden.");
       }
 
       function loadState() {
         try {
           var raw = localStorage.getItem(storageKey) || localStorage.getItem(legacyStorageKey);
-          return raw ? JSON.parse(raw) : null;
+          if (!raw) return null;
+          var parsed = JSON.parse(raw);
+          parsed.entries = {};
+          return parsed;
         } catch (error) {
           return null;
         }
@@ -1302,7 +1349,7 @@
       function setLockedState() {
         var unlocked = Boolean(sync.role);
         var personLoaded = Boolean(sync.loaded && sync.person);
-        var canEdit = unlocked && (sync.role === "chef" || personLoaded);
+        var canEdit = unlocked && personLoaded;
         [els.unitOneName, els.unitOneMinutes, els.unitTwoName, els.unitTwoMinutes, els.startDate, els.endDate, els.prevMonth, els.currentMonth, els.nextMonth, els.exportData, els.importData, els.printPage].forEach(function (element) {
           element.disabled = !canEdit;
         });

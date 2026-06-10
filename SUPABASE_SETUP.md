@@ -29,3 +29,11 @@ Hinweise:
 ## Aktuelle RC1-Einschränkung
 
 Diese RC1 ist auf die bereits deployed Edge Function abgestimmt. Beim Laden eines bisher unbekannten Namens legt die Function den Namen aktuell automatisch an. Deshalb beim Test bewusst eindeutige Testnamen verwenden, z. B. `Test Cordula` und `Test Max`.
+
+
+## RC3 Hinweise
+
+- Beim Rollenwechsel wird die Chef-Ansicht geschlossen.
+- Beim Wechsel des Namens oder Zugangs werden angezeigte Tagesdaten geleert.
+- Tagesdaten werden nicht mehr dauerhaft im Browser-localStorage gespeichert; Supabase ist die Quelle der gespeicherten Einträge.
+- Cache-Version: `zeiterfassung-pwa-v5`.
