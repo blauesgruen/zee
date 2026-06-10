@@ -1,6 +1,6 @@
-# Zee Supabase Sync RC4
+# Zee Supabase Sync RC5
 
-RC4 bereinigt die sichtbaren UI-Zustaende.
+RC5 bereinigt die sichtbaren UI-Zustaende.
 
 ## Sichtbarkeitslogik
 
@@ -14,10 +14,10 @@ RC4 bereinigt die sichtbaren UI-Zustaende.
 
 ## Cache
 
-Service Worker Cache-Version: v6.
+Service Worker Cache-Version: v7.
 
 Nach Upload auf den Branch `feature` bitte testen mit:
 
 ```text
-https://blauesgruen.github.io/zee/?v=rc4
+https://blauesgruen.github.io/zee/?v=rc5
 ```

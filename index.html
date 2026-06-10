@@ -554,7 +554,7 @@
   <main class="app">
     <header class="topbar">
       <h1>Zeiterfassung</h1>
-      <div class="status" aria-live="polite"><span class="dot"></span><span id="saveStatus">Lokal gespeichert</span></div>
+      <div class="status" aria-live="polite"><span class="dot"></span><span id="saveStatus">RC5 · nicht angemeldet</span></div>
     </header>
 
     <section class="panel access-panel" id="accessPanel" aria-label="Zugang">
@@ -614,7 +614,7 @@
       </div>
       <div class="toolbar-actions">
         <button class="btn" id="exportData" type="button">Export</button>
-        <button class="btn" id="importData" type="button">Import</button>
+        <button class="btn hidden" id="importData" type="button" hidden>Import</button>
         <button class="btn" id="printPage" type="button">Drucken</button>
         <input id="importFile" type="file" accept="application/json" hidden>
       </div>
@@ -693,6 +693,7 @@
       var legacyStorageKey = "zeiterfassung-einzeldatei-v1";
       var accessStorageKey = "zee-access-code";
       var syncEndpoint = "https://bmhjcocglkaqrwmtwiug.supabase.co/functions/v1/zee-sync";
+      var appVersion = "RC5";
       var dayFormatter = new Intl.DateTimeFormat("de-DE", { weekday: "short" });
       var dateFormatter = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
       var monthFormatter = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
@@ -791,33 +792,64 @@
         var isChef = sync.role === "chef";
         var personLoaded = Boolean(sync.loaded && sync.person);
 
-        els.settingsPanel.classList.toggle("hidden", !isUser);
-        els.toolbarPanel.classList.toggle("hidden", !(isUser && personLoaded));
-        els.summaryPanel.classList.toggle("hidden", !(isUser && personLoaded));
-        els.tablePanel.classList.toggle("hidden", !(isUser && personLoaded));
-        els.mobileRows.classList.toggle("hidden", !(isUser && personLoaded));
-        els.chefPanel.classList.toggle("hidden", !isChef);
+        if (isChef) {
+          showOnly("chef");
+        } else if (isUser && personLoaded) {
+          showOnly("user-loaded");
+        } else if (isUser) {
+          showOnly("user-name");
+        } else {
+          showOnly("locked");
+        }
+      }
+
+      function showOnly(mode) {
+        var isLocked = mode === "locked";
+        var isChef = mode === "chef";
+        var isUserName = mode === "user-name";
+        var isUserLoaded = mode === "user-loaded";
+
+        setVisible(els.syncBanner, isUserName);
+        setVisible(els.settingsPanel, isUserName || isUserLoaded);
+        setVisible(els.toolbarPanel, isUserLoaded);
+        setVisible(els.summaryPanel, isUserLoaded);
+        setVisible(els.tablePanel, isUserLoaded);
+        setVisible(els.mobileRows, isUserLoaded);
+        setVisible(els.chefPanel, isChef);
 
         document.querySelectorAll(".loaded-only").forEach(function (element) {
-          element.classList.toggle("hidden", !(isUser && personLoaded));
+          setVisible(element, isUserLoaded);
         });
 
-        els.importData.classList.add("hidden");
-
-        if (!sync.role) {
-          els.syncBanner.classList.add("hidden");
-          els.userHint.textContent = "Bitte Zugangscode eingeben.";
-        } else if (isChef) {
-          els.syncBanner.classList.add("hidden");
-          els.userHint.textContent = "";
-        } else if (!personLoaded) {
-          els.syncBanner.classList.remove("hidden");
-          els.syncBanner.textContent = "Nutzer-Zugang aktiv. Bitte Namen eingeben und Daten laden.";
-          els.userHint.textContent = "Bitte Namen eingeben und Daten laden. Die Tagesliste erscheint erst nach erfolgreichem Laden.";
-        } else {
-          els.syncBanner.classList.add("hidden");
-          els.userHint.textContent = "Aktiver Name: " + state.name + ".";
+        if (els.importData) {
+          els.importData.disabled = true;
+          els.importData.hidden = true;
+          els.importData.classList.add("hidden");
         }
+
+        if (isLocked) {
+          if (els.syncBanner) els.syncBanner.textContent = "";
+          if (els.userHint) els.userHint.textContent = "";
+          setStatus("nicht angemeldet");
+        } else if (isChef) {
+          if (els.syncBanner) els.syncBanner.textContent = "";
+          if (els.userHint) els.userHint.textContent = "";
+          setStatus("Chef-Zugang aktiv");
+        } else if (isUserName) {
+          if (els.syncBanner) els.syncBanner.textContent = "Nutzer-Zugang aktiv. Bitte Namen eingeben und Daten laden.";
+          if (els.userHint) els.userHint.textContent = "Bitte Namen eingeben und Daten laden. Die Tagesliste erscheint erst nach erfolgreichem Laden.";
+          setStatus("Nutzer-Zugang aktiv · keine Person geladen");
+        } else {
+          if (els.syncBanner) els.syncBanner.textContent = "";
+          if (els.userHint) els.userHint.textContent = "Aktiver Name: " + state.name + ".";
+          setStatus("Person geladen · " + state.name);
+        }
+      }
+
+      function setVisible(element, shouldShow) {
+        if (!element) return;
+        element.classList.toggle("hidden", !shouldShow);
+        element.hidden = !shouldShow;
       }
 
       hydrateForm();
@@ -1423,7 +1455,7 @@
       }
 
       function setStatus(message) {
-        els.saveStatus.textContent = message;
+        els.saveStatus.textContent = appVersion + " · " + message;
       }
 
       function setAccessStatus(message) {
