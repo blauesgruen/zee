@@ -571,7 +571,7 @@
 
     <div class="sync-banner hidden" id="syncBanner">Nicht mit Supabase verbunden.</div>
 
-    <section class="panel settings" aria-label="Stammdaten">
+    <section class="panel settings hidden" id="settingsPanel" aria-label="Stammdaten">
       <div class="field">
         <label for="personName">Name</label>
         <div class="name-actions">
@@ -579,8 +579,9 @@
           <button class="btn primary" id="loadPersonData" type="button">Daten laden</button>
         </div>
       </div>
+      <p class="locked-note" id="userHint">Bitte Namen eingeben und Daten laden. Die Tagesliste erscheint erst nach erfolgreichem Laden.</p>
 
-      <div class="unit-box">
+      <div class="unit-box loaded-only">
         <label for="unitOneName">Einheit 1</label>
         <div class="unit-grid">
           <input id="unitOneName" placeholder="Einheit 1">
@@ -588,7 +589,7 @@
         </div>
       </div>
 
-      <div class="unit-box">
+      <div class="unit-box loaded-only">
         <label for="unitTwoName">Einheit 2</label>
         <div class="unit-grid">
           <input id="unitTwoName" placeholder="Einheit 2">
@@ -596,7 +597,7 @@
         </div>
       </div>
 
-      <div class="field">
+      <div class="field loaded-only" id="periodField">
         <label>Zeitraum</label>
         <div class="period">
           <input id="startDate" type="date" aria-label="Startdatum">
@@ -605,7 +606,7 @@
       </div>
     </section>
 
-    <section class="panel toolbar" aria-label="Aktionen">
+    <section class="panel toolbar hidden" id="toolbarPanel" aria-label="Aktionen">
       <div class="range-actions">
         <button class="btn" id="prevMonth" type="button" title="Vorheriger Monat">‹</button>
         <button class="btn primary" id="currentMonth" type="button">Aktueller Monat</button>
@@ -636,14 +637,14 @@
       <div id="chefContent" class="empty">Noch keine Chef-Daten geladen.</div>
     </section>
 
-    <section class="summary" aria-label="Summen">
+    <section class="summary hidden" id="summaryPanel" aria-label="Summen">
       <div class="metric"><span>Person</span><strong id="summaryName">-</strong></div>
       <div class="metric"><span>Einheiten gesamt</span><strong id="summaryUnits">0</strong></div>
       <div class="metric"><span>Minuten gesamt</span><strong id="summaryMinutes">0 min</strong></div>
       <div class="metric"><span>Stunden gesamt</span><strong id="summaryHours">00:00 h</strong></div>
     </section>
 
-    <section class="panel table-wrap" aria-label="Tagesliste">
+    <section class="panel table-wrap hidden" id="tablePanel" aria-label="Tagesliste">
       <table>
         <thead>
           <tr>
@@ -658,7 +659,7 @@
       </table>
     </section>
 
-    <section class="mobile-list" id="mobileRows" aria-label="Tagesliste mobil"></section>
+    <section class="mobile-list hidden" id="mobileRows" aria-label="Tagesliste mobil"></section>
   </main>
 
   <template id="rowTemplate">
@@ -723,6 +724,11 @@
         lockAccess: document.getElementById("lockAccess"),
         accessStatus: document.getElementById("accessStatus"),
         syncBanner: document.getElementById("syncBanner"),
+        settingsPanel: document.getElementById("settingsPanel"),
+        toolbarPanel: document.getElementById("toolbarPanel"),
+        summaryPanel: document.getElementById("summaryPanel"),
+        tablePanel: document.getElementById("tablePanel"),
+        userHint: document.getElementById("userHint"),
         chefPanel: document.getElementById("chefPanel"),
         chefFrom: document.getElementById("chefFrom"),
         chefTo: document.getElementById("chefTo"),
@@ -778,6 +784,40 @@
         sync.chefRows = [];
         els.chefPanel.classList.add("hidden");
         els.chefContent.textContent = "Chef-Code eingeben, um die Übersicht zu laden.";
+      }
+
+      function updateViewState() {
+        var isUser = sync.role === "user";
+        var isChef = sync.role === "chef";
+        var personLoaded = Boolean(sync.loaded && sync.person);
+
+        els.settingsPanel.classList.toggle("hidden", !isUser);
+        els.toolbarPanel.classList.toggle("hidden", !(isUser && personLoaded));
+        els.summaryPanel.classList.toggle("hidden", !(isUser && personLoaded));
+        els.tablePanel.classList.toggle("hidden", !(isUser && personLoaded));
+        els.mobileRows.classList.toggle("hidden", !(isUser && personLoaded));
+        els.chefPanel.classList.toggle("hidden", !isChef);
+
+        document.querySelectorAll(".loaded-only").forEach(function (element) {
+          element.classList.toggle("hidden", !(isUser && personLoaded));
+        });
+
+        els.importData.classList.add("hidden");
+
+        if (!sync.role) {
+          els.syncBanner.classList.add("hidden");
+          els.userHint.textContent = "Bitte Zugangscode eingeben.";
+        } else if (isChef) {
+          els.syncBanner.classList.add("hidden");
+          els.userHint.textContent = "";
+        } else if (!personLoaded) {
+          els.syncBanner.classList.remove("hidden");
+          els.syncBanner.textContent = "Nutzer-Zugang aktiv. Bitte Namen eingeben und Daten laden.";
+          els.userHint.textContent = "Bitte Namen eingeben und Daten laden. Die Tagesliste erscheint erst nach erfolgreichem Laden.";
+        } else {
+          els.syncBanner.classList.add("hidden");
+          els.userHint.textContent = "Aktiver Name: " + state.name + ".";
+        }
       }
 
       hydrateForm();
@@ -865,8 +905,8 @@
             await loadChefOverview();
           }
           setLockedState();
-          if (!silent && result.role === "user" && els.personName.value.trim()) {
-            await loadPersonData();
+          if (result.role === "user") {
+            setStatus("Nutzer-Zugang aktiv. Bitte Namen eingeben und Daten laden.");
           } else if (previousRole && previousRole !== result.role) {
             setStatus("Zugang gewechselt. Anzeige wurde geleert.");
           }
@@ -892,6 +932,9 @@
         state.entries = {};
         sessionStorage.removeItem(accessStorageKey);
         els.accessCode.value = "";
+        els.personName.value = "";
+        state.name = "";
+        localStorage.removeItem("zee-last-name");
         resetChefView();
         saveState();
         render();
@@ -910,6 +953,11 @@
           return;
         }
 
+        state.entries = {};
+        sync.loaded = false;
+        sync.person = null;
+        render();
+        setLockedState();
         setStatus("Name wird in Supabase geprüft ...");
         try {
           var resolved = await callSync("resolvePerson", { displayName: state.name, create: false });
@@ -945,6 +993,11 @@
           setLockedState();
         } catch (error) {
           console.error(error);
+          sync.loaded = false;
+          sync.person = null;
+          state.entries = {};
+          render();
+          setLockedState();
           setStatus("Daten konnten nicht geladen werden: " + error.message);
         }
       }
@@ -1347,20 +1400,26 @@
       }
 
       function setLockedState() {
-        var unlocked = Boolean(sync.role);
+        var isUser = sync.role === "user";
+        var isChef = sync.role === "chef";
         var personLoaded = Boolean(sync.loaded && sync.person);
-        var canEdit = unlocked && personLoaded;
+        var canEdit = isUser && personLoaded;
+
         [els.unitOneName, els.unitOneMinutes, els.unitTwoName, els.unitTwoMinutes, els.startDate, els.endDate, els.prevMonth, els.currentMonth, els.nextMonth, els.exportData, els.importData, els.printPage].forEach(function (element) {
           element.disabled = !canEdit;
         });
-        els.personName.disabled = !unlocked;
-        els.loadPersonData.disabled = !unlocked || !els.personName.value.trim();
+
+        els.personName.disabled = !isUser;
+        els.loadPersonData.disabled = !isUser || !els.personName.value.trim();
+        els.lockAccess.disabled = !sync.role;
+
         document.querySelectorAll(".count-control button, .count-control input, .note-cell input, .mobile-field input").forEach(function (element) {
           element.disabled = !canEdit;
         });
-        els.syncBanner.classList.toggle("hidden", canEdit || sync.role === "chef");
-        if (!unlocked) els.syncBanner.textContent = "Gesperrt. Bitte Zugangscode eingeben.";
-        else if (!personLoaded && sync.role === "user") els.syncBanner.textContent = "Zugang aktiv. Bitte Namen eingeben und Daten laden.";
+
+        els.chefRefresh.disabled = !isChef;
+        els.chefExport.disabled = !isChef;
+        updateViewState();
       }
 
       function setStatus(message) {

@@ -1,43 +1,23 @@
-# Deployment Notes RC1
+# Zee Supabase Sync RC4
 
-Diese Version ist ein sinnvoll testbarer Stand für den Branch `feature`, aber noch kein finaler Produktionsstand.
+RC4 bereinigt die sichtbaren UI-Zustaende.
 
-## Umgesetzt
+## Sichtbarkeitslogik
 
-- Zugangscode-Maske.
-- User-/Chef-Rolle über Supabase Edge Function.
-- Namensbasierte Datentrennung.
-- Speicherung in `public.people` und `public.time_entries`.
-- Einheitsnamen und Minuten werden pro Tageszeile gespeichert.
-- HH:MM-Ausgabe, z. B. `00:50 h`.
-- Chef-Übersicht mit CSV-Export.
-- Lokaler Cache via `localStorage`.
-- Service-Worker-Cache auf `zeiterfassung-pwa-v3`.
+- Ohne Login wird nur der Zugangscodebereich angezeigt.
+- Mit Nutzer-Code wird zunaechst nur der Namensbereich angezeigt.
+- Die Tagesliste, Summen und Aktionen erscheinen erst nach erfolgreichem Laden einer Person.
+- Mit Chef-Code wird nur die Chef-Uebersicht angezeigt. Die Nutzer-Erfassung bleibt ausgeblendet.
+- Beim Sperren werden Rolle, Person und Tagesdaten aus dem Browserzustand entfernt.
+- Beim Namenswechsel werden bisherige Tagesdaten sofort ausgeblendet.
+- Import ist in dieser RC-Version in der UI versteckt, um versehentliches Ueberschreiben zu vermeiden.
 
-## Noch offen nach RC-Test
+## Cache
 
-- Komfortables Bestätigen neuer Namen vor DB-Anlage.
-- Ähnliche Namen/Dubletten besser anzeigen.
-- Detailansicht in der Chef-Übersicht.
-- Konfliktwarnung bei paralleler Bearbeitung.
-- Optional: Monatsabschluss/Sperre alter Monate.
+Service Worker Cache-Version: v6.
 
-## Wichtiger Sicherheitspunkt
+Nach Upload auf den Branch `feature` bitte testen mit:
 
-Die Tabellen sind nicht direkt aus dem Browser beschreibbar. Die Webseite ruft nur die Edge Function auf. Das ist Absicht.
-
-
-## RC2
-
-- Name wird jetzt vor dem Laden über `resolvePerson` geprüft.
-- Unbekannte Namen werden nicht automatisch angelegt; der Browser fragt vorher nach Bestätigung.
-- Fehlermeldungen aus Supabase werden in der Statuszeile angezeigt.
-- Service-Worker-Cache: `zeiterfassung-pwa-v4`.
-
-
-## RC3 Hinweise
-
-- Beim Rollenwechsel wird die Chef-Ansicht geschlossen.
-- Beim Wechsel des Namens oder Zugangs werden angezeigte Tagesdaten geleert.
-- Tagesdaten werden nicht mehr dauerhaft im Browser-localStorage gespeichert; Supabase ist die Quelle der gespeicherten Einträge.
-- Cache-Version: `zeiterfassung-pwa-v5`.
+```text
+https://blauesgruen.github.io/zee/?v=rc4
+```
