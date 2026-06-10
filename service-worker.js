@@ -1,4 +1,4 @@
-const CACHE_NAME = "zeiterfassung-pwa-v7";
+const CACHE_NAME = "zeiterfassung-pwa-v8";
 const ASSETS = [
   "./manifest.webmanifest",
   "./icons/icon-192.png",

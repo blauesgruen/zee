@@ -508,6 +508,33 @@
       background: #eef3ef;
     }
 
+    .link-button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--accent-strong);
+      padding: 0;
+      font: inherit;
+      font-weight: 800;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .chef-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .chef-detail-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 850;
+    }
+
     .hidden {
       display: none !important;
     }
@@ -554,7 +581,7 @@
   <main class="app">
     <header class="topbar">
       <h1>Zeiterfassung</h1>
-      <div class="status" aria-live="polite"><span class="dot"></span><span id="saveStatus">RC5 · nicht angemeldet</span></div>
+      <div class="status" aria-live="polite"><span class="dot"></span><span id="saveStatus">RC6 · nicht angemeldet</span></div>
     </header>
 
     <section class="panel access-panel" id="accessPanel" aria-label="Zugang">
@@ -693,7 +720,7 @@
       var legacyStorageKey = "zeiterfassung-einzeldatei-v1";
       var accessStorageKey = "zee-access-code";
       var syncEndpoint = "https://bmhjcocglkaqrwmtwiug.supabase.co/functions/v1/zee-sync";
-      var appVersion = "RC5";
+      var appVersion = "RC6";
       var dayFormatter = new Intl.DateTimeFormat("de-DE", { weekday: "short" });
       var dateFormatter = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
       var monthFormatter = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
@@ -1054,12 +1081,75 @@
           els.chefContent.textContent = "Keine Daten im gewählten Zeitraum.";
           return;
         }
-        var html = '<table class="chef-table"><thead><tr><th>Name</th><th>Einheiten</th><th>Minuten</th><th>Stunden</th></tr></thead><tbody>';
+        var html = '<table class="chef-table"><thead><tr><th>Name</th><th>Einheiten</th><th>Minuten</th><th>Stunden</th><th>Details</th></tr></thead><tbody>';
         result.people.forEach(function (person) {
-          html += '<tr><td>' + escapeHtml(person.displayName || person.display_name || "-") + '</td><td>' + String(person.totalUnits || 0) + '</td><td>' + String(person.totalMinutes || 0) + ' min</td><td>' + escapeHtml(person.totalFormatted || formatHours(person.totalMinutes || 0)) + ' h</td></tr>';
+          var displayName = person.displayName || person.display_name || "-";
+          html += '<tr>'
+            + '<td>' + escapeHtml(displayName) + '</td>'
+            + '<td>' + String(person.totalUnits || 0) + '</td>'
+            + '<td>' + String(person.totalMinutes || 0) + ' min</td>'
+            + '<td>' + escapeHtml(person.totalFormatted || formatHours(person.totalMinutes || 0)) + ' h</td>'
+            + '<td><button class="link-button chef-detail-button" type="button" data-person-id="' + escapeHtml(person.id || "") + '">Anzeigen</button></td>'
+            + '</tr>';
         });
         html += '</tbody></table>';
         els.chefContent.innerHTML = html;
+        els.chefContent.querySelectorAll(".chef-detail-button").forEach(function (button) {
+          button.addEventListener("click", function () {
+            loadChefPersonDetails(button.getAttribute("data-person-id"));
+          });
+        });
+      }
+
+      async function loadChefPersonDetails(personId) {
+        if (sync.role !== "chef" || !personId) return;
+        var from = els.chefFrom.value || state.startDate || defaultRange.start;
+        var to = els.chefTo.value || state.endDate || defaultRange.end;
+        els.chefContent.textContent = "Details werden geladen ...";
+        try {
+          var result = await callSync("chefPersonDetails", { personId: personId, from: from, to: to });
+          renderChefPersonDetails(result);
+        } catch (error) {
+          console.error(error);
+          els.chefContent.textContent = "Details konnten nicht geladen werden: " + error.message;
+        }
+      }
+
+      function renderChefPersonDetails(result) {
+        var person = result.person || {};
+        var entries = result.entries || [];
+        var totalMinutes = entries.reduce(function (sum, entry) {
+          return sum + numberOrZero(entry.unit_one_count) * numberOrZero(entry.unit_one_minutes) + numberOrZero(entry.unit_two_count) * numberOrZero(entry.unit_two_minutes);
+        }, 0);
+        var html = '<div class="chef-detail-header">'
+          + '<div><p class="chef-detail-title">Details: ' + escapeHtml(person.display_name || person.displayName || "-") + '</p>'
+          + '<span class="day-muted">' + escapeHtml(result.from || "") + ' bis ' + escapeHtml(result.to || "") + ' · ' + entries.length + ' Tageszeilen · ' + formatHours(totalMinutes) + ' h</span></div>'
+          + '<button class="btn" id="chefBackToOverview" type="button">Zurück zur Übersicht</button>'
+          + '</div>';
+        if (!entries.length) {
+          html += '<div class="empty">Keine Tagesdaten im gewählten Zeitraum.</div>';
+        } else {
+          html += '<table class="chef-table"><thead><tr><th>Datum</th><th>Einheit 1</th><th>Einheit 2</th><th>Summe</th><th>Notiz</th></tr></thead><tbody>';
+          entries.forEach(function (entry) {
+            var minutes = numberOrZero(entry.unit_one_count) * numberOrZero(entry.unit_one_minutes) + numberOrZero(entry.unit_two_count) * numberOrZero(entry.unit_two_minutes);
+            html += '<tr>'
+              + '<td>' + escapeHtml(formatDateLabel(entry.work_date)) + '</td>'
+              + '<td>' + escapeHtml(entry.unit_one_name || "Einheit 1") + ': ' + String(numberOrZero(entry.unit_one_count)) + ' × ' + String(numberOrZero(entry.unit_one_minutes)) + ' min</td>'
+              + '<td>' + escapeHtml(entry.unit_two_name || "Einheit 2") + ': ' + String(numberOrZero(entry.unit_two_count)) + ' × ' + String(numberOrZero(entry.unit_two_minutes)) + ' min</td>'
+              + '<td>' + escapeHtml(formatHours(minutes)) + ' h</td>'
+              + '<td>' + escapeHtml(entry.note || "") + '</td>'
+              + '</tr>';
+          });
+          html += '</tbody></table>';
+        }
+        els.chefContent.innerHTML = html;
+        var back = document.getElementById("chefBackToOverview");
+        if (back) back.addEventListener("click", loadChefOverview);
+      }
+
+      function formatDateLabel(iso) {
+        if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) return String(iso || "");
+        return dateFormatter.format(parseIsoDate(iso));
       }
 
       function exportChefCsv() {
