@@ -25,3 +25,11 @@ Diese Version ist ein sinnvoll testbarer Stand für den Branch `feature`, aber n
 ## Wichtiger Sicherheitspunkt
 
 Die Tabellen sind nicht direkt aus dem Browser beschreibbar. Die Webseite ruft nur die Edge Function auf. Das ist Absicht.
+
+
+## RC2
+
+- Name wird jetzt vor dem Laden über `resolvePerson` geprüft.
+- Unbekannte Namen werden nicht automatisch angelegt; der Browser fragt vorher nach Bestätigung.
+- Fehlermeldungen aus Supabase werden in der Statuszeile angezeigt.
+- Service-Worker-Cache: `zeiterfassung-pwa-v4`.

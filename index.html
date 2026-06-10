@@ -868,9 +868,28 @@
           return;
         }
 
-        setStatus("Daten werden aus Supabase geladen ...");
+        setStatus("Name wird in Supabase geprüft ...");
         try {
-          var result = await callSync("loadPerson", { displayName: state.name });
+          var resolved = await callSync("resolvePerson", { displayName: state.name, create: false });
+          if (resolved.status === "missing") {
+            var hint = "Der Name \"" + resolved.displayName + "\" wurde noch nicht gefunden.";
+            if (resolved.suggestions && resolved.suggestions.length) {
+              hint += "\n\nÄhnliche Namen:\n" + resolved.suggestions.map(function (person) { return "- " + person.display_name; }).join("\n");
+            }
+            hint += "\n\nDiesen Namen neu anlegen?";
+            if (!window.confirm(hint)) {
+              setStatus("Name nicht angelegt. Bitte Namen prüfen.");
+              return;
+            }
+            resolved = await callSync("resolvePerson", { displayName: state.name, create: true });
+          }
+
+          if (resolved.status !== "found" && resolved.status !== "created") {
+            setStatus("Name konnte nicht aufgelöst werden.");
+            return;
+          }
+
+          var result = await callSync("loadPerson", { displayName: resolved.person.display_name });
           sync.person = result.person;
           sync.loaded = true;
           state.name = result.person.display_name;
@@ -883,7 +902,7 @@
           setLockedState();
         } catch (error) {
           console.error(error);
-          setStatus("Daten konnten nicht geladen werden.");
+          setStatus("Daten konnten nicht geladen werden: " + error.message);
         }
       }
 
@@ -1273,7 +1292,9 @@
         });
         var data = await response.json().catch(function () { return {}; });
         if (!response.ok) {
-          throw new Error(data.error || "Supabase request failed");
+          var message = data.error || "Supabase request failed";
+          if (data.status === "missing" && data.displayName) message = "Name nicht gefunden: " + data.displayName;
+          throw new Error(message);
         }
         return data;
       }
